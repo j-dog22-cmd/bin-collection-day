@@ -421,7 +421,7 @@
       </div>
 
       <p class="subtitle">
-        Enter your UK postcode and we’ll look up your local authority, then show a sample bin schedule.
+        Enter your UK postcode and we’ll look up your local authority, then fetch your bin schedule.
       </p>
 
       <div class="card">
@@ -472,8 +472,7 @@
           <div class="bins-row" id="binsRow"></div>
 
           <div class="hint">
-            This is a demo schedule generated from your council and today’s date.
-            In a full version, this would come directly from your council’s website or API.
+            This data comes from your council’s website via the backend scraper.
           </div>
         </div>
       </div>
@@ -488,7 +487,6 @@
   <script>
     const postcodeInput = document.getElementById("postcode");
     const lookupBtn = document.getElementById("lookupBtn");
-    const statusLine = document.getElementById("statusLine");
     const statusDot = document.getElementById("statusDot");
     const statusText = document.getElementById("statusText");
     const results = document.getElementById("results");
@@ -499,11 +497,8 @@
 
     function setStatus(state, message) {
       statusDot.classList.remove("error", "idle");
-      if (state === "idle") {
-        statusDot.classList.add("idle");
-      } else if (state === "error") {
-        statusDot.classList.add("error");
-      }
+      if (state === "idle") statusDot.classList.add("idle");
+      if (state === "error") statusDot.classList.add("error");
       statusText.textContent = message;
     }
 
@@ -511,75 +506,26 @@
       return pc.trim().toUpperCase();
     }
 
-    function formatDate(date) {
-      return date.toLocaleDateString("en-GB", {
-        weekday: "long",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-    }
+    async function fetchBinInfo(postcode) {
+      const councilRes = await fetch(
+        `/api/getCouncil?postcode=${encodeURIComponent(postcode)}`
+      );
+      const councilData = await councilRes.json();
 
-    // Simple demo logic: generate a fake schedule based on council + today
-    function generateDemoSchedule(councilName) {
-      const today = new Date();
-      const day = today.getDay(); // 0 = Sunday, 1 = Monday, ...
-      const bins = [];
-
-      // Very simple pattern: alternate recycling/refuse, always food,
-      // sometimes garden, sometimes glass.
-      if (day % 2 === 0) {
-        bins.push({ label: "Recycling", type: "recycling" });
-      } else {
-        bins.push({ label: "Refuse", type: "refuse" });
+      if (!councilRes.ok) {
+        throw new Error(councilData.error || "Failed to resolve council");
       }
 
-      bins.push({ label: "Food waste", type: "food" });
+      const scheduleRes = await fetch(
+        `/api/getBinSchedule?council=${encodeURIComponent(councilData.council)}`
+      );
+      const scheduleData = await scheduleRes.json();
 
-      if (day === 1 || day === 4) {
-        bins.push({ label: "Garden waste", type: "garden" });
+      if (!scheduleRes.ok) {
+        throw new Error(scheduleData.error || "Failed to fetch bin schedule");
       }
 
-      if (day === 2) {
-        bins.push({ label: "Glass", type: "glass" });
-      }
-
-      // Next collection date: tomorrow (demo)
-      const next = new Date(today);
-      next.setDate(today.getDate() + 1);
-
-      return {
-        nextDate: next,
-        bins,
-      };
-    }
-
-    function renderSchedule(councilName) {
-      const schedule = generateDemoSchedule(councilName);
-      councilPill.textContent = councilName || "Local authority";
-      councilNameEl.textContent = councilName
-        ? `Local authority: ${councilName}`
-        : "Local authority not found — using demo data.";
-
-      nextDateEl.textContent = formatDate(schedule.nextDate);
-
-      binsRow.innerHTML = "";
-      schedule.bins.forEach((bin) => {
-        const pill = document.createElement("div");
-        pill.className = "bin-pill";
-
-        const dot = document.createElement("div");
-        dot.className = "bin-dot " + bin.type;
-
-        const label = document.createElement("span");
-        label.textContent = bin.label;
-
-        pill.appendChild(dot);
-        pill.appendChild(label);
-        binsRow.appendChild(pill);
-      });
-
-      results.style.display = "block";
+      return scheduleData;
     }
 
     async function lookupPostcode() {
@@ -593,32 +539,36 @@
       }
 
       lookupBtn.disabled = true;
-      setStatus("idle", "Looking up postcode…");
+      setStatus("idle", "Looking up postcode and bin schedule…");
 
       try {
-        const res = await fetch(
-          "https://api.postcodes.io/postcodes/" + encodeURIComponent(postcode)
-        );
+        const data = await fetchBinInfo(postcode);
 
-        if (!res.ok) {
-          throw new Error("Postcode not found");
-        }
+        councilPill.textContent = data.council;
+        councilNameEl.textContent = `Local authority: ${data.council}`;
+        nextDateEl.textContent = data.nextCollection;
 
-        const data = await res.json();
-        if (!data || !data.result) {
-          throw new Error("No data for that postcode");
-        }
+        binsRow.innerHTML = "";
+        data.bins.forEach((label) => {
+          const pill = document.createElement("div");
+          pill.className = "bin-pill";
 
-        const councilName =
-          data.result.admin_district ||
-          data.result.parliamentary_constituency ||
-          "Unknown council";
+          const dot = document.createElement("div");
+          dot.className = "bin-dot recycling"; // You can map real bin types later
 
-        setStatus("idle", "Postcode found — generating demo bin schedule…");
-        renderSchedule(councilName);
+          const span = document.createElement("span");
+          span.textContent = label;
+
+          pill.appendChild(dot);
+          pill.appendChild(span);
+          binsRow.appendChild(pill);
+        });
+
+        results.style.display = "block";
+        setStatus("idle", "Bin schedule loaded.");
       } catch (err) {
         console.error(err);
-        setStatus("error", "Could not find that postcode. Try another?");
+        setStatus("error", err.message || "Something went wrong.");
         results.style.display = "none";
       } finally {
         lookupBtn.disabled = false;

@@ -4,6 +4,4 @@ export const councilWebsites = {
 
   "South Gloucestershire Council":
     "https://www.southglos.gov.uk/bins-and-recycling/collection-day"
-
-  // Add more councils here as you support them
 };

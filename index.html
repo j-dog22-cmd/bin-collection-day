@@ -122,8 +122,7 @@
       color: var(--muted);
       margin-bottom: 16px;
     }
-
-    .card {
+        .card {
       background: rgba(15, 23, 42, 0.9);
       border-radius: 18px;
       border: 1px solid rgba(148, 163, 184, 0.18);
@@ -251,8 +250,7 @@
         0 0 0 1px rgba(22, 163, 74, 0.5),
         0 6px 14px rgba(22, 163, 74, 0.4);
     }
-
-    .status-line {
+        .status-line {
       font-size: 0.78rem;
       color: var(--muted);
       display: flex;
@@ -406,6 +404,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="app">
     <div class="app-inner">
@@ -423,8 +422,7 @@
       <p class="subtitle">
         Enter your UK postcode and we’ll look up your local authority, then fetch your bin schedule.
       </p>
-
-      <div class="card">
+            <div class="card">
         <div class="card-header">
           <div class="card-title">
             <span class="icon">📍</span>
@@ -483,8 +481,10 @@
       </div>
     </div>
   </div>
+    <script>
+    /* Your Vercel backend URL */
+    const API_BASE = "https://bin-collection-bjwfs7a3w-j-dog22-cmds-projects.vercel.app";
 
-  <script>
     const postcodeInput = document.getElementById("postcode");
     const lookupBtn = document.getElementById("lookupBtn");
     const statusDot = document.getElementById("statusDot");
@@ -508,7 +508,7 @@
 
     async function fetchBinInfo(postcode) {
       const councilRes = await fetch(
-        `/api/getCouncil?postcode=${encodeURIComponent(postcode)}`
+        `${API_BASE}/api/getCouncil?postcode=${encodeURIComponent(postcode)}`
       );
       const councilData = await councilRes.json();
 
@@ -517,7 +517,7 @@
       }
 
       const scheduleRes = await fetch(
-        `/api/getBinSchedule?council=${encodeURIComponent(councilData.council)}`
+        `${API_BASE}/api/getBinSchedule?council=${encodeURIComponent(councilData.council)}`
       );
       const scheduleData = await scheduleRes.json();
 
@@ -554,7 +554,7 @@
           pill.className = "bin-pill";
 
           const dot = document.createElement("div");
-          dot.className = "bin-dot recycling"; // You can map real bin types later
+          dot.className = "bin-dot recycling"; // placeholder mapping
 
           const span = document.createElement("span");
           span.textContent = label;

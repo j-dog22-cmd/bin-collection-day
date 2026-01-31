@@ -1,5 +1,5 @@
 import { scrapeBristol } from "./scrapers/bristol.js";
-// import { scrapeTemplate } from "./scrapers/template.js"; // for future councils
+// import { scrapeTemplate } from "./scrapers/template.js";
 
 export default async function handler(req, res) {
   const { council } = req.query || req.body || {};
@@ -11,8 +11,7 @@ export default async function handler(req, res) {
   const scrapers = {
     "Bristol City Council": scrapeBristol
     // "South Gloucestershire Council": () =>
-    //   scrapeTemplate("South Gloucestershire Council"),
-    // Add more councils here
+    //   scrapeTemplate("South Gloucestershire Council")
   };
 
   const scraper = scrapers[council];
@@ -31,7 +30,6 @@ export default async function handler(req, res) {
       ...data
     });
   } catch (err) {
-    console.error(err);
     return res.status(500).json({
       error: "Scraping failed",
       details: err.message
